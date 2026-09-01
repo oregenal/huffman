@@ -27,9 +27,31 @@ func Get_Tree(str string) Node {
 	}
 	// fmt.Println(leefs)
 
+	// I can just make func in func with closure
+	Smallest := func () Node {
+		value := 99999999999
+		index := 0
+
+		for i, leef := range leefs {
+			if leef.score < value {
+				value = leef.score
+				index = i
+			}
+		}
+
+		leefs_count := len(leefs)
+		result := leefs[index]
+		if leefs_count-1 != index {
+			leefs[index] = leefs[leefs_count-1]
+		}
+		leefs = leefs[:leefs_count-1]
+
+		return result
+	}
+
 	for len(leefs) > 1 {
-		smallest1 := Smallest(&leefs)
-		smallest2 := Smallest(&leefs)
+		smallest1 := Smallest()
+		smallest2 := Smallest()
 		str := smallest1.c + smallest2.c
 		val := smallest1.score + smallest2.score
 		result := Node{c: str, score: val, left: &smallest1, right: &smallest2}
@@ -38,27 +60,6 @@ func Get_Tree(str string) Node {
 	}
 
 	return leefs[0]
-}
-
-func Smallest(leefs *[]Node) Node {
-	value := 99999999999
-	index := 0
-
-	for i, leef := range *leefs {
-		if leef.score < value {
-			value = leef.score
-			index = i
-		}
-	}
-
-	leefs_count := len(*leefs)
-	result := (*leefs)[index]
-	if leefs_count-1 != index {
-		(*leefs)[index] = (*leefs)[leefs_count-1]
-	}
-	*leefs = (*leefs)[:leefs_count-1]
-
-	return result
 }
 
 func main() {

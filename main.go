@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 )
 
 const input_sting = "hello, world!"
@@ -25,9 +26,8 @@ func HoffmanTree(str string) Node {
 	}
 
 	smallest := func () Node {
-		value := 99999999999
+		value := math.MaxInt
 		index := 0
-
 		for i, leef := range leefs {
 			if leef.score < value {
 				value = leef.score

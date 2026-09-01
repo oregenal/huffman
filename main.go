@@ -21,6 +21,9 @@ func HoffmanTree(str string) Node {
 		scores[string(c)] += 1
 	}
 
+	// ramge on map is random
+	// so the result on each programm run
+	// wuld be different
 	for k, v := range scores {
 		leefs = append(leefs, Node{c: k, score: v})
 	}

@@ -28,7 +28,7 @@ func HoffmanTree(str string) Node {
 	// fmt.Println(leefs)
 
 	// I can just make func in func with closure
-	Smallest := func () Node {
+	smallest := func () Node {
 		value := 99999999999
 		index := 0
 
@@ -50,8 +50,8 @@ func HoffmanTree(str string) Node {
 	}
 
 	for len(leefs) > 1 {
-		smallest1 := Smallest()
-		smallest2 := Smallest()
+		smallest1 := smallest()
+		smallest2 := smallest()
 		str := smallest1.c + smallest2.c
 		val := smallest1.score + smallest2.score
 		result := Node{c: str, score: val, left: &smallest1, right: &smallest2}

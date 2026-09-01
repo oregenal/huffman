@@ -8,9 +8,9 @@ import (
 const input_sting = "hello, world!"
 
 type Node struct {
-	c string
-	score int;
-	left, right *Node;
+	c           string
+	score       int
+	left, right *Node
 }
 
 func HoffmanTree(str string) Node {
@@ -28,7 +28,7 @@ func HoffmanTree(str string) Node {
 		nodes = append(nodes, Node{c: k, score: v})
 	}
 
-	smallest := func () Node {
+	smallest := func() Node {
 		value := math.MaxInt
 		index := 0
 		for i, node := range nodes {
@@ -52,9 +52,9 @@ func HoffmanTree(str string) Node {
 		smallest1 := smallest()
 		smallest2 := smallest()
 		newNode := Node{
-			c: smallest1.c + smallest2.c,
+			c:     smallest1.c + smallest2.c,
 			score: smallest1.score + smallest2.score,
-			left: &smallest1,
+			left:  &smallest1,
 			right: &smallest2,
 		}
 		nodes = append(nodes, newNode)

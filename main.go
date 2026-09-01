@@ -12,7 +12,7 @@ type Node struct {
 	left, right *Node;
 }
 
-func Get_Tree(str string) Node {
+func HoffmanTree(str string) Node {
 	scores := map[string]int{}
 	leefs := []Node{}
 	// fmt.Println(input_sting)
@@ -63,6 +63,6 @@ func Get_Tree(str string) Node {
 }
 
 func main() {
-	result := Get_Tree(input_sting)
+	result := HoffmanTree(input_sting)
 	fmt.Println(result)
 }

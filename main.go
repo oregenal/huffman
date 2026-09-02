@@ -7,12 +7,17 @@ import (
 
 const input_sting = "hello, world!"
 
+// In x86_64 Node struct take 5 regitsters
+// So it can be provided/returned by value
 type Node struct {
 	c           string
 	score       int
 	left, right *Node
 }
 
+// While range on map in Go work randomly
+// the result on each function call
+// will be different
 func HoffmanTree(str string) Node {
 	scores := map[string]int{}
 	nodes := []Node{}
@@ -21,9 +26,6 @@ func HoffmanTree(str string) Node {
 		scores[string(c)] += 1
 	}
 
-	// ramge on map is random
-	// so the result on each programm run
-	// wuld be different
 	for k, v := range scores {
 		nodes = append(nodes, Node{c: k, score: v})
 	}

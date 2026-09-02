@@ -33,9 +33,9 @@ func HoffmanTree(str string) Node {
 	smallest := func() Node {
 		value := math.MaxInt
 		index := 0
-		for i, node := range nodes {
-			if node.score < value {
-				value = node.score
+		for i, n := range nodes {
+			if n.score < value {
+				value = n.score
 				index = i
 			}
 		}

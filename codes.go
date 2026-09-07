@@ -1,13 +1,5 @@
 package main
 
-type Code struct {
-	code int;
-	counter int;
-}
-
-// May be faster to use not String but Rune
-type MapCodes map[string]Code
-
 func Codes(tree Node) MapCodes {
 	codes := MapCodes{}
 

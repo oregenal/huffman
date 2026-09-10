@@ -1,5 +1,7 @@
 package main
 
+import "fmt"
+
 type Code struct {
 	code int;
 	counter int;
@@ -7,6 +9,12 @@ type Code struct {
 
 // May be faster to use not String but Rune
 type MapCodes map[string]Code
+
+func PrintCodes(codes MapCodes) {
+	for k, v :=range(codes) {
+		fmt.Printf("%s: %0*b\n", k, v.counter, v.code)
+	}
+}
 
 func Codes(tree Node) MapCodes {
 	codes := MapCodes{}

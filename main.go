@@ -9,6 +9,8 @@ const input_sting = "hello, world!"
 
 func main() {
 	hoffmanTree := HoffmanTree(input_sting)
-	PrintTree(hoffmanTree)
-	fmt.Println(Codes(hoffmanTree))
+	// PrintTree(hoffmanTree)
+	codes := Codes(hoffmanTree)
+	fmt.Println(codes)
+	PrintCodes(codes)
 }

@@ -63,7 +63,6 @@ func HoffmanTree(str string) Node {
 	return nodes[0]
 }
 
-
 // Looks like maximum Nodes that can be,
 // is all printable symbols * 2 + 1.
 // So this function safely implemented using recursion.

@@ -3,15 +3,15 @@ package main
 import "fmt"
 
 type Code struct {
-	code int;
-	counter int;
+	code    int
+	counter int
 }
 
 // May be faster to use not String but Rune
 type MapCodes map[string]Code
 
 func PrintCodes(codes MapCodes) {
-	for k, v :=range(codes) {
+	for k, v := range codes {
 		fmt.Printf("%s: %0*b\n", k, v.counter, v.code)
 	}
 }
@@ -19,7 +19,7 @@ func PrintCodes(codes MapCodes) {
 func Codes(tree Node) MapCodes {
 	codes := MapCodes{}
 
-	codesRec(&tree, codes, Code{0,0})
+	codesRec(&tree, codes, Code{0, 0})
 
 	return codes
 }

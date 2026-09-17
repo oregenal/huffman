@@ -18,7 +18,7 @@ type Node struct {
 // While range on map in Go work randomly
 // the result on each function call
 // will be different
-func HoffmanTree(str string) Node {
+func haffmanTree(str string) Node {
 	scores := map[string]int{}
 	nodes := []Node{}
 
@@ -121,8 +121,8 @@ func codesRec(node *Node, codes MapCodes, code Code) {
 
 type BinCode []byte
 
-func Encrypt(input string, hoffmanTree Node) BinCode {
-	codes := Codes(hoffmanTree)
+func Encrypt(input string, haffmanTree Node) BinCode {
+	codes := Codes(haffmanTree)
 
 	return EncryptedBinary(EncryptedString(input, codes))
 }
@@ -201,10 +201,10 @@ func Decrypt(tree Node, encbin BinCode) string {
 }
 
 func main() {
-	hoffmanTree := HoffmanTree(input_string)
+	haffmanTree := haffmanTree(input_string)
 
-	encbin := Encrypt(input_string, hoffmanTree)
+	encbin := Encrypt(input_string, haffmanTree)
 
-	result := Decrypt(hoffmanTree, encbin)
+	result := Decrypt(haffmanTree, encbin)
 	fmt.Println(result)
 }

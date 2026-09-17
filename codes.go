@@ -26,7 +26,7 @@ func Codes(tree Node) MapCodes {
 
 // Map pass thru by reference by default
 func codesRec(node *Node, codes MapCodes, code Code) {
-	if len(node.c) != 1 {
+	if node.left != nil {
 		code.code <<= 1
 		code.counter += 1
 		codesRec(node.left, codes, code)

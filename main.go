@@ -14,7 +14,7 @@ func Decrypt(tree Node, encbin []byte) string {
 		counter := 0
 
 		for counter < 8 {
-			if len(node.c) == 1 {
+			if node.left == nil {
 				result += string(node.c)
 				node = tree
 			}

@@ -2,36 +2,43 @@ package main
 
 import (
 	"fmt"
-	// "os"
 )
 
-const input_string = "hello, world!"
+const input_string = "A poem is a piece of creative writing written in lines and stanzas that uses the sound, rhythm, and artistic meaning of words to share ideas and feelings.\nIf you would like, tell me what topic or feeling you want to write about, and I can help you compose a short poem!"
+
+func Decrypt(tree Node, encbin []byte) string {
+	result := ""
+	node := tree
+
+	for _, v := range encbin {
+		counter := 0
+
+		for counter < 8 {
+			if len(node.c) == 1 {
+				result += string(node.c)
+				node = tree
+			}
+
+			k := 0b10000000 & v
+			v <<= 1
+			counter += 1
+
+			if k == 0 {
+				node = *node.left
+			} else {
+				node = *node.right
+			}
+		}
+	}
+
+	return result
+}
 
 func main() {
 	hoffmanTree := HoffmanTree(input_string)
-	// PrintTree(hoffmanTree)
 
-	codes := Codes(hoffmanTree)
-	// fmt.Println(codes)
-	PrintCodes(codes)
+	encbin := Encrypt(input_string, hoffmanTree)
 
-	encstr := EncryptedString(input_string, codes)
-	// encstr := "01101001"
-	fmt.Println(encstr)
-
-	encbin := EncryptedBinary(encstr)
-	fmt.Println(encbin)
-	for _, b := range encbin {
-		fmt.Printf("|%08b", b)
-	}
-	fmt.Println("|")
-	for _, b := range encbin {
-		fmt.Printf("|%x", b)
-	}
-	fmt.Println("|")
-
-	// err := os.WriteFile("test.bin", encbin, 446)
-	// if err != nil {
-	// 	panic("write file error")
-	// }
+	result := Decrypt(hoffmanTree, encbin)
+	fmt.Println(result)
 }

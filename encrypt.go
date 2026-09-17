@@ -2,7 +2,9 @@ package main
 
 import "fmt"
 
-func Encrypt(input string, hoffmanTree Node) []byte {
+type BinCode []byte
+
+func Encrypt(input string, hoffmanTree Node) BinCode {
 	codes := Codes(hoffmanTree)
 
 	return EncryptedBinary(EncryptedString(input, codes))
@@ -19,8 +21,8 @@ func EncryptedString(input string, codes MapCodes) string {
 	return result
 }
 
-func EncryptedBinary(input string) []byte {
-	result := []byte{}
+func EncryptedBinary(input string) BinCode {
+	result := BinCode{}
 	counter := 0
 	var b byte = 0
 

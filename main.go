@@ -6,7 +6,7 @@ import (
 
 const input_string = "A poem is a piece of creative writing written in lines and stanzas that uses the sound, rhythm, and artistic meaning of words to share ideas and feelings.\nIf you would like, tell me what topic or feeling you want to write about, and I can help you compose a short poem!"
 
-func Decrypt(tree Node, encbin []byte) string {
+func Decrypt(tree Node, encbin BinCode) string {
 	result := ""
 	node := tree
 

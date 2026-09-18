@@ -1,12 +1,18 @@
 package main
 
 import (
+	"encoding/binary"
 	"fmt"
+	"log"
 	"math"
+	"os"
 )
+
+const dataFile = "data.bin"
 
 // BUG disappearing point at the end
 const input_string = "A poem is a piece of creative writing written in lines and stanzas that uses the sound, rhythm, and artistic meaning of words to share ideas and feelings."
+
 // const input_string = "A poem is a piece of creative writing written in lines and stanzas that uses the sound, rhythm, and artistic meaning of words to share ideas and feelings.\nIf you would like, tell me what topic or feeling you want to write about, and I can help you compose a short poem!"
 
 // In x86_64 Node struct take 5 registers
@@ -122,8 +128,8 @@ func codesRec(node *Node, codes MapCodes, code Code) {
 }
 
 type BinCode struct {
-	size int;
-	data []byte;
+	size int64
+	data []byte
 }
 
 func Encrypt(input string, haffmanTree Node) BinCode {
@@ -158,9 +164,9 @@ func EncryptedBinary(input string) BinCode {
 			panic("unsupported symbol")
 		}
 
-		if result.size % 8 != 0 {
+		if result.size%8 != 0 {
 			b <<= 1
-		} else if result.size % 8 == 0 {
+		} else if result.size%8 == 0 {
 			result.data = append(result.data, b)
 			b = 0
 		} else {
@@ -168,8 +174,8 @@ func EncryptedBinary(input string) BinCode {
 		}
 	}
 
-	if result.size % 8 != 0 {
-		b <<= (7 - result.size % 8)
+	if result.size%8 != 0 {
+		b <<= (7 - result.size%8)
 		result.data = append(result.data, b)
 	}
 
@@ -215,6 +221,39 @@ func main() {
 
 	encbin := Encrypt(input_string, haffmanTree)
 
-	result := Decrypt(haffmanTree, encbin)
+	// Convert BinCode to binary data
+	// so we can save it to file
+	data := make([]byte, 8)
+	encoded, err := binary.Encode(data, binary.LittleEndian, encbin.size)
+	if err != nil {
+		log.Fatalf("encode fail %v", err)
+	}
+	if encoded != 8 {
+		panic("encoding wrong size")
+	}
+
+	data = append(data, encbin.data...)
+
+	// File manipulations
+	os.WriteFile(dataFile, data, 0644)
+
+	fromFile, err := os.ReadFile(dataFile)
+	if err != nil {
+		log.Fatalf("read file fail %v", err)
+	}
+
+	// Decode BinCode from binary format
+	newData := BinCode{
+		data: fromFile[8:],
+	}
+	_, err = binary.Decode(
+		fromFile[:8],
+		binary.LittleEndian,
+		&newData.size)
+	if err != nil {
+		log.Fatalf("decode fail %v", err)
+	}
+
+	result := Decrypt(haffmanTree, newData)
 	fmt.Println(result)
 }

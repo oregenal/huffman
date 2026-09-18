@@ -5,7 +5,9 @@ import (
 	"math"
 )
 
-const input_string = "A poem is a piece of creative writing written in lines and stanzas that uses the sound, rhythm, and artistic meaning of words to share ideas and feelings.\nIf you would like, tell me what topic or feeling you want to write about, and I can help you compose a short poem!"
+// BUG disappearing point at the end
+const input_string = "A poem is a piece of creative writing written in lines and stanzas that uses the sound, rhythm, and artistic meaning of words to share ideas and feelings."
+// const input_string = "A poem is a piece of creative writing written in lines and stanzas that uses the sound, rhythm, and artistic meaning of words to share ideas and feelings.\nIf you would like, tell me what topic or feeling you want to write about, and I can help you compose a short poem!"
 
 // In x86_64 Node struct take 5 registers
 // So it can be provided/returned by value
@@ -119,7 +121,10 @@ func codesRec(node *Node, codes MapCodes, code Code) {
 	}
 }
 
-type BinCode []byte
+type BinCode struct {
+	size int;
+	data []byte;
+}
 
 func Encrypt(input string, haffmanTree Node) BinCode {
 	codes := Codes(haffmanTree)
@@ -140,33 +145,32 @@ func EncryptedString(input string, codes MapCodes) string {
 
 func EncryptedBinary(input string) BinCode {
 	result := BinCode{}
-	counter := 0
+	result.size = 0
 	var b byte = 0
 
 	for _, c := range input {
 		if c == '1' {
 			b |= 1
-			counter += 1
+			result.size += 1
 		} else if c == '0' {
-			counter += 1
+			result.size += 1
 		} else {
 			panic("unsupported symbol")
 		}
 
-		if counter < 8 {
+		if result.size % 8 != 0 {
 			b <<= 1
-		} else if counter == 8 {
-			result = append(result, b)
+		} else if result.size % 8 == 0 {
+			result.data = append(result.data, b)
 			b = 0
-			counter = 0
 		} else {
 			panic("UNREACHABLE")
 		}
 	}
 
-	if counter != 0 {
-		b <<= (7 - counter)
-		result = append(result, b)
+	if result.size % 8 != 0 {
+		b <<= (7 - result.size % 8)
+		result.data = append(result.data, b)
 	}
 
 	return result
@@ -175,19 +179,25 @@ func EncryptedBinary(input string) BinCode {
 func Decrypt(tree Node, encbin BinCode) string {
 	result := ""
 	node := tree
+	counter := encbin.size
 
-	for _, v := range encbin {
-		counter := 0
+	for _, v := range encbin.data {
+		bit := 0
 
-		for counter < 8 {
+		for bit < 8 {
 			if node.left == nil {
 				result += string(node.c)
 				node = tree
 			}
 
+			if counter == 0 {
+				break
+			}
+
 			k := 0b10000000 & v
 			v <<= 1
-			counter += 1
+			bit += 1
+			counter -= 1
 
 			if k == 0 {
 				node = *node.left

@@ -92,8 +92,8 @@ func printTreeRec(tree *Node) string {
 }
 
 type Code struct {
-	code    int
-	counter int
+	code    int32
+	counter int32
 }
 
 // May be faster to use not String but Rune
@@ -125,6 +125,34 @@ func codesRec(node *Node, codes MapCodes, code Code) {
 	} else {
 		codes[node.c] = code
 	}
+}
+
+func TreeFromCodes(codes MapCodes) Node {
+	tree := Node{}
+	for k, v := range(codes) {
+		strcode := fmt.Sprintf("%0*b", v.counter, v.code)
+		node := &tree
+		
+		for _, c := range(strcode) {
+			if c == '1' {
+				if node.right == nil {
+					// This Node goes in heap??
+					node.right = &Node{}
+				}
+				node = node.right
+			} else if c == '0' {
+				if node.left == nil {
+					node.left = &Node{}
+				}
+				node = node.left
+			} else {
+				log.Fatalf("UREACHABLE")
+			}
+		}
+
+		node.c = k
+	}
+	return tree
 }
 
 type BinCode struct {
@@ -219,7 +247,9 @@ func Decrypt(tree Node, encbin BinCode) string {
 func main() {
 	haffmanTree := haffmanTree(input_string)
 
-	encbin := Encrypt(input_string, haffmanTree)
+	codes := Codes(haffmanTree)
+
+	encbin := EncryptedBinary(EncryptedString(input_string, codes))
 
 	// Convert BinCode to binary data
 	// so we can save it to file
@@ -254,6 +284,9 @@ func main() {
 		log.Fatalf("decode fail %v", err)
 	}
 
-	result := Decrypt(haffmanTree, newData)
+	newTree := TreeFromCodes(codes)
+	// PrintTree(newTree)
+
+	result := Decrypt(newTree, newData)
 	fmt.Println(result)
 }

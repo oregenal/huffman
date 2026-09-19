@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 	"math"
-	// "os"
+	"os"
 	"unicode/utf8"
 )
 
@@ -93,8 +93,8 @@ func printTreeRec(tree *Node) string {
 }
 
 type Code struct {
-	code    int32
-	counter int32
+	Code    int32
+	Counter int32
 }
 
 // May be faster to use not String but Rune
@@ -102,8 +102,9 @@ type MapCodes map[string]Code
 
 func PrintCodes(codes MapCodes) {
 	for k, v := range codes {
-		fmt.Printf("%s: %0*b\n", k, v.counter, v.code)
+		fmt.Printf("|%s: %0*b", k, v.Counter, v.Code)
 	}
+	fmt.Println("|")
 }
 
 func Codes(tree Node) MapCodes {
@@ -117,11 +118,11 @@ func Codes(tree Node) MapCodes {
 // Map pass thru by reference by default
 func codesRec(node *Node, codes MapCodes, code Code) {
 	if node.left != nil {
-		code.code <<= 1
-		code.counter += 1
+		code.Code <<= 1
+		code.Counter += 1
 		codesRec(node.left, codes, code)
 
-		code.code |= 0b1
+		code.Code |= 0b1
 		codesRec(node.right, codes, code)
 	} else {
 		codes[node.c] = code
@@ -130,11 +131,11 @@ func codesRec(node *Node, codes MapCodes, code Code) {
 
 func TreeFromCodes(codes MapCodes) Node {
 	tree := Node{}
-	for k, v := range(codes) {
-		strcode := fmt.Sprintf("%0*b", v.counter, v.code)
+	for k, v := range codes {
+		strcode := fmt.Sprintf("%0*b", v.Counter, v.Code)
 		node := &tree
-		
-		for _, c := range(strcode) {
+
+		for _, c := range strcode {
 			if c == '1' {
 				if node.right == nil {
 					// This Node goes in heap??
@@ -183,7 +184,7 @@ func CodesToBin(codes MapCodes) []byte {
 		panic("encoding wrong size")
 	}
 
-	for k, v := range(codes) {
+	for k, v := range codes {
 		runeBuf := make([]byte, 4)
 
 		r, utfSize := utf8.DecodeRuneInString(k)
@@ -213,6 +214,37 @@ func CodesToBin(codes MapCodes) []byte {
 	return result
 }
 
+func BinToCodes(buf []byte, size int32) MapCodes {
+	result := MapCodes{}
+	for i := range size {
+		var r rune
+		sliseNum := i * 12
+		decoded, err := binary.Decode(
+			buf[sliseNum:],
+			binary.LittleEndian, &r)
+		if err != nil {
+			log.Fatalf("decode fail %v", err)
+		}
+		if decoded != 4 {
+			panic("encoding wrong size")
+		}
+
+		payload := Code{}
+		decoded, err = binary.Decode(
+			buf[sliseNum+4:],
+			binary.LittleEndian, &payload)
+		if err != nil {
+			log.Fatalf("decode fail %v", err)
+		}
+		if decoded != 8 {
+			panic("encoding wrong size")
+		}
+		result[string(r)] = payload
+	}
+
+	return result
+}
+
 type BinCode struct {
 	size int64
 	data []byte
@@ -229,7 +261,7 @@ func EncryptedString(input string, codes MapCodes) string {
 
 	for _, c := range input {
 		v := codes[string(c)]
-		result += fmt.Sprintf("%0*b", v.counter, v.code)
+		result += fmt.Sprintf("%0*b", v.Counter, v.Code)
 	}
 
 	return result
@@ -309,37 +341,35 @@ func main() {
 
 	encbin := EncryptedBinary(EncryptedString(input_string, codes))
 
-	// Convert BinCode to binary data
+	// Convert to binary data
 	// so we can save it to file
 	bincodes := CodesToBin(codes)
 	bindata := DataToBin(encbin)
 	bin := []byte{}
 	bin = append(bin, bincodes...)
 	bin = append(bin, bindata...)
-	fmt.Println(bin)
 
-	// // File manipulations
-	// os.WriteFile(dataFile, bindata, 0644)
-	//
-	// fromFile, err := os.ReadFile(dataFile)
-	// if err != nil {
-	// 	log.Fatalf("read file fail %v", err)
-	// }
+	// File manipulations
+	os.WriteFile(dataFile, bin, 0644)
+
+	fromFile, err := os.ReadFile(dataFile)
+	if err != nil {
+		log.Fatalf("read file fail %v", err)
+	}
 
 	// Decode BinCode from binary format
-
 	var binCodesSize int32
-	binary.Decode(bin[:4], binary.LittleEndian, &binCodesSize)
-	binCodeBufferEnd := 12 * binCodesSize + 4
-	binCodesBuffer := bin[4:binCodeBufferEnd]
-	fmt.Println("binCodesBuffer:", binCodesBuffer)
-	binDataBuffer := bin[binCodeBufferEnd:]
-	fmt.Println("binDataBuffer: ", binDataBuffer)
+	binary.Decode(fromFile[:4], binary.LittleEndian, &binCodesSize)
+	binCodeBufferEnd := 12*binCodesSize + 4
+	binCodesBuffer := fromFile[4:binCodeBufferEnd]
+	binDataBuffer := fromFile[binCodeBufferEnd:]
+
+	newCodes := BinToCodes(binCodesBuffer, binCodesSize)
 
 	newData := BinCode{
 		data: binDataBuffer[8:],
 	}
-	_, err := binary.Decode(
+	_, err = binary.Decode(
 		binDataBuffer[:8],
 		binary.LittleEndian,
 		&newData.size)
@@ -347,8 +377,7 @@ func main() {
 		log.Fatalf("decode fail %v", err)
 	}
 
-	newTree := TreeFromCodes(codes)
-	// PrintTree(newTree)
+	newTree := TreeFromCodes(newCodes)
 
 	result := Decrypt(newTree, newData)
 	fmt.Println(result)

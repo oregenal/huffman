@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"log"
 	"math"
-	"os"
+	// "os"
+	"unicode/utf8"
 )
 
 const dataFile = "data.bin"
@@ -155,6 +156,63 @@ func TreeFromCodes(codes MapCodes) Node {
 	return tree
 }
 
+func DataToBin(encbin BinCode) []byte {
+	data := make([]byte, 8)
+
+	encoded, err := binary.Encode(data, binary.LittleEndian, encbin.size)
+	if err != nil {
+		log.Fatalf("encode fail %v", err)
+	}
+	if encoded != 8 {
+		panic("encoding wrong size")
+	}
+
+	data = append(data, encbin.data...)
+	return data
+}
+
+func CodesToBin(codes MapCodes) []byte {
+	result := make([]byte, 4)
+	size := len(codes)
+
+	encoded, err := binary.Encode(result, binary.LittleEndian, int32(size))
+	if err != nil {
+		log.Fatalf("encode fail %v", err)
+	}
+	if encoded != 4 {
+		panic("encoding wrong size")
+	}
+
+	for k, v := range(codes) {
+		runeBuf := make([]byte, 4)
+
+		r, utfSize := utf8.DecodeRuneInString(k)
+		if utfSize != 1 {
+			panic("wrong symbol")
+		}
+
+		encoded, err := binary.Encode(runeBuf, binary.LittleEndian, r)
+		if err != nil {
+			log.Fatalf("encode fail %v", err)
+		}
+		if encoded != 4 {
+			panic("encoding wrong size")
+		}
+		result = append(result, runeBuf...)
+
+		scoreBuf := make([]byte, 8)
+		encoded, err = binary.Encode(scoreBuf, binary.LittleEndian, v)
+		if err != nil {
+			log.Fatalf("encode fail %v", err)
+		}
+		if encoded != 8 {
+			panic("encoding wrong size")
+		}
+		result = append(result, scoreBuf...)
+	}
+	return result
+}
+
 type BinCode struct {
 	size int64
 	data []byte
@@ -253,31 +311,36 @@ func main() {
 
 	// Convert BinCode to binary data
 	// so we can save it to file
-	data := make([]byte, 8)
-	encoded, err := binary.Encode(data, binary.LittleEndian, encbin.size)
-	if err != nil {
-		log.Fatalf("encode fail %v", err)
-	}
-	if encoded != 8 {
-		panic("encoding wrong size")
-	}
+	bincodes := CodesToBin(codes)
+	bindata := DataToBin(encbin)
+	bin := []byte{}
+	bin = append(bin, bincodes...)
+	bin = append(bin, bindata...)
+	fmt.Println(bin)
 
-	data = append(data, encbin.data...)
-
-	// File manipulations
-	os.WriteFile(dataFile, data, 0644)
-
-	fromFile, err := os.ReadFile(dataFile)
-	if err != nil {
-		log.Fatalf("read file fail %v", err)
-	}
+	// // File manipulations
+	// os.WriteFile(dataFile, bindata, 0644)
+	//
+	// fromFile, err := os.ReadFile(dataFile)
+	// if err != nil {
+	// 	log.Fatalf("read file fail %v", err)
+	// }
 
 	// Decode BinCode from binary format
+
+	var binCodesSize int32
+	binary.Decode(bin[:4], binary.LittleEndian, &binCodesSize)
+	binCodeBufferEnd := 12 * binCodesSize + 4
+	binCodesBuffer := bin[4:binCodeBufferEnd]
+	fmt.Println("binCodesBuffer:", binCodesBuffer)
+	binDataBuffer := bin[binCodeBufferEnd:]
+	fmt.Println("binDataBuffer: ", binDataBuffer)
+
 	newData := BinCode{
-		data: fromFile[8:],
+		data: binDataBuffer[8:],
 	}
-	_, err = binary.Decode(
-		fromFile[:8],
+	_, err := binary.Decode(
+		binDataBuffer[:8],
 		binary.LittleEndian,
 		&newData.size)
 	if err != nil {

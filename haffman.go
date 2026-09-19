@@ -245,6 +245,21 @@ func BinToCodes(buf []byte, size int32) MapCodes {
 	return result
 }
 
+func BinToData(binDataBuffer []byte) BinCode {
+	result := BinCode{
+		data: binDataBuffer[8:],
+	}
+	_, err := binary.Decode(
+		binDataBuffer[:8],
+		binary.LittleEndian,
+		&result.size)
+	if err != nil {
+		log.Fatalf("decode fail %v", err)
+	}
+
+	return result
+}
+
 type BinCode struct {
 	size int64
 	data []byte
@@ -336,9 +351,7 @@ func Decrypt(tree Node, encbin BinCode) string {
 
 func main() {
 	haffmanTree := haffmanTree(input_string)
-
 	codes := Codes(haffmanTree)
-
 	encbin := EncryptedBinary(EncryptedString(input_string, codes))
 
 	// Convert to binary data
@@ -365,18 +378,7 @@ func main() {
 	binDataBuffer := fromFile[binCodeBufferEnd:]
 
 	newCodes := BinToCodes(binCodesBuffer, binCodesSize)
-
-	newData := BinCode{
-		data: binDataBuffer[8:],
-	}
-	_, err = binary.Decode(
-		binDataBuffer[:8],
-		binary.LittleEndian,
-		&newData.size)
-	if err != nil {
-		log.Fatalf("decode fail %v", err)
-	}
-
+	newData := BinToData(binDataBuffer)
 	newTree := TreeFromCodes(newCodes)
 
 	result := Decrypt(newTree, newData)

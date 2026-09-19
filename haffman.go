@@ -9,7 +9,7 @@ import (
 	"unicode/utf8"
 )
 
-const dataFile = "data.bin"
+const dataFile = "data.haz"
 
 // BUG disappearing point at the end
 const input_string = "A poem is a piece of creative writing written in lines and stanzas that uses the sound, rhythm, and artistic meaning of words to share ideas and feelings."

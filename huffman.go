@@ -188,7 +188,7 @@ func CodesToBin(codes MapCodes) []byte {
 		runeBuf := make([]byte, 4)
 
 		r, utfSize := utf8.DecodeRuneInString(k)
-		if utfSize != 1 {
+		if utfSize > 4 {
 			panic("wrong symbol")
 		}
 

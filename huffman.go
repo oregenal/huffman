@@ -9,7 +9,12 @@ import (
 	"unicode/utf8"
 )
 
-const dataFile = "data.haz"
+const (
+	dataFile   = "data.huz"
+	Header     = ".HUZ"
+	HeaderSize = len(Header)
+	TableSize  = 4
+)
 
 // BUG disappearing point at the end
 const input_string = "A poem is a piece of creative writing written in lines and stanzas that uses the sound, rhythm, and artistic meaning of words to share ideas and feelings."
@@ -173,14 +178,14 @@ func DataToBin(encbin BinCode) []byte {
 }
 
 func CodesToBin(codes MapCodes) []byte {
-	result := make([]byte, 4)
+	result := make([]byte, TableSize)
 	size := len(codes)
 
 	encoded, err := binary.Encode(result, binary.LittleEndian, int32(size))
 	if err != nil {
 		log.Fatalf("encode fail %v", err)
 	}
-	if encoded != 4 {
+	if encoded != TableSize {
 		panic("encoding wrong size")
 	}
 
@@ -359,6 +364,7 @@ func main() {
 	bincodes := CodesToBin(codes)
 	bindata := DataToBin(encbin)
 	bin := []byte{}
+	bin = append(bin, []byte(Header)...)
 	bin = append(bin, bincodes...)
 	bin = append(bin, bindata...)
 
@@ -371,10 +377,17 @@ func main() {
 	}
 
 	// Decode BinCode from binary format
+	if string(fromFile[:HeaderSize]) != Header {
+		panic("vrong file type")
+	}
+
 	var binCodesSize int32
-	binary.Decode(fromFile[:4], binary.LittleEndian, &binCodesSize)
-	binCodeBufferEnd := 12*binCodesSize + 4
-	binCodesBuffer := fromFile[4:binCodeBufferEnd]
+	binary.Decode(
+		fromFile[HeaderSize:HeaderSize+TableSize],
+		binary.LittleEndian,
+		&binCodesSize)
+	binCodeBufferEnd := 12*binCodesSize + int32(HeaderSize) + TableSize
+	binCodesBuffer := fromFile[HeaderSize+TableSize : binCodeBufferEnd]
 	binDataBuffer := fromFile[binCodeBufferEnd:]
 
 	newCodes := BinToCodes(binCodesBuffer, binCodesSize)

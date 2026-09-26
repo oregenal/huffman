@@ -1,3 +1,8 @@
+// Toy file compressor realized using Huffman algorithm
+//
+// Compressed file structure:
+// 		[header(".HUZ")][tableSize(int32)][Table][Data]
+
 package main
 
 import (
@@ -11,15 +16,14 @@ import (
 
 const (
 	dataFile   = "data.huz"
-	Header     = ".HUZ"
-	HeaderSize = len(Header)
-	TableSize  = 4
+	header     = ".HUZ"
+	headerSize = int32(len(header))
+	tableSize  = 4  // Int32
+	codeSize   = 12 // Rune + 2 * int32
 )
 
 // BUG disappearing point at the end
 const input_string = "A poem is a piece of creative writing written in lines and stanzas that uses the sound, rhythm, and artistic meaning of words to share ideas and feelings."
-
-// const input_string = "A poem is a piece of creative writing written in lines and stanzas that uses the sound, rhythm, and artistic meaning of words to share ideas and feelings.\nIf you would like, tell me what topic or feeling you want to write about, and I can help you compose a short poem!"
 
 // In x86_64 Node struct take 5 registers
 // So it can be provided/returned by value
@@ -27,6 +31,19 @@ type Node struct {
 	c           string
 	score       int
 	left, right *Node
+}
+
+// May be faster to use not String but Rune
+type MapCodes map[string]Code
+
+type Code struct {
+	Code    int32
+	Counter int32
+}
+
+type BinCode struct {
+	size int64
+	data []byte
 }
 
 // While range on map in Go work randomly
@@ -96,14 +113,6 @@ func printTreeRec(tree *Node) string {
 		printTreeRec(tree.left),
 		printTreeRec(tree.right))
 }
-
-type Code struct {
-	Code    int32
-	Counter int32
-}
-
-// May be faster to use not String but Rune
-type MapCodes map[string]Code
 
 func PrintCodes(codes MapCodes) {
 	for k, v := range codes {
@@ -178,14 +187,14 @@ func DataToBin(encbin BinCode) []byte {
 }
 
 func CodesToBin(codes MapCodes) []byte {
-	result := make([]byte, TableSize)
-	size := len(codes)
+	result := make([]byte, tableSize)
+	size := int32(len(codes))
 
-	encoded, err := binary.Encode(result, binary.LittleEndian, int32(size))
+	encoded, err := binary.Encode(result, binary.LittleEndian, size)
 	if err != nil {
 		log.Fatalf("encode fail %v", err)
 	}
-	if encoded != TableSize {
+	if encoded != tableSize {
 		panic("encoding wrong size")
 	}
 
@@ -223,9 +232,9 @@ func BinToCodes(buf []byte, size int32) MapCodes {
 	result := MapCodes{}
 	for i := range size {
 		var r rune
-		sliseNum := i * 12
+		slice := i * codeSize
 		decoded, err := binary.Decode(
-			buf[sliseNum:],
+			buf[slice:],
 			binary.LittleEndian, &r)
 		if err != nil {
 			log.Fatalf("decode fail %v", err)
@@ -236,7 +245,7 @@ func BinToCodes(buf []byte, size int32) MapCodes {
 
 		payload := Code{}
 		decoded, err = binary.Decode(
-			buf[sliseNum+4:],
+			buf[slice+4:],
 			binary.LittleEndian, &payload)
 		if err != nil {
 			log.Fatalf("decode fail %v", err)
@@ -265,17 +274,13 @@ func BinToData(binDataBuffer []byte) BinCode {
 	return result
 }
 
-type BinCode struct {
-	size int64
-	data []byte
-}
-
 func Encrypt(input string, haffmanTree Node) BinCode {
 	codes := Codes(haffmanTree)
 
 	return EncryptedBinary(EncryptedString(input, codes))
 }
 
+// Very slow
 func EncryptedString(input string, codes MapCodes) string {
 	var result string
 
@@ -320,6 +325,7 @@ func EncryptedBinary(input string) BinCode {
 	return result
 }
 
+// Vary slow
 func Decrypt(tree Node, encbin BinCode) string {
 	result := ""
 	node := tree
@@ -364,7 +370,7 @@ func main() {
 	bincodes := CodesToBin(codes)
 	bindata := DataToBin(encbin)
 	bin := []byte{}
-	bin = append(bin, []byte(Header)...)
+	bin = append(bin, []byte(header)...)
 	bin = append(bin, bincodes...)
 	bin = append(bin, bindata...)
 
@@ -377,17 +383,17 @@ func main() {
 	}
 
 	// Decode BinCode from binary format
-	if string(fromFile[:HeaderSize]) != Header {
+	if string(fromFile[:headerSize]) != header {
 		panic("vrong file type")
 	}
 
 	var binCodesSize int32
 	binary.Decode(
-		fromFile[HeaderSize:HeaderSize+TableSize],
+		fromFile[headerSize:headerSize+tableSize],
 		binary.LittleEndian,
 		&binCodesSize)
-	binCodeBufferEnd := 12*binCodesSize + int32(HeaderSize) + TableSize
-	binCodesBuffer := fromFile[HeaderSize+TableSize : binCodeBufferEnd]
+	binCodeBufferEnd := codeSize*binCodesSize + headerSize + tableSize
+	binCodesBuffer := fromFile[headerSize+tableSize : binCodeBufferEnd]
 	binDataBuffer := fromFile[binCodeBufferEnd:]
 
 	newCodes := BinToCodes(binCodesBuffer, binCodesSize)

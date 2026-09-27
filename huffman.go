@@ -34,7 +34,7 @@ type Node struct {
 }
 
 // May be faster to use not String but Rune
-type MapCodes map[string]Code
+type MapCodes map[rune]Code
 
 type Code struct {
 	Code    int32
@@ -50,15 +50,15 @@ type BinCode struct {
 // the result on each function call
 // will be different
 func haffmanTree(str string) Node {
-	scores := map[string]int{}
+	scores := map[rune]int{}
 	nodes := []Node{}
 
 	for _, c := range str {
-		scores[string(c)] += 1
+		scores[c] += 1
 	}
 
 	for k, v := range scores {
-		nodes = append(nodes, Node{c: k, score: v})
+		nodes = append(nodes, Node{c: string(k), score: v})
 	}
 
 	smallest := func() Node {
@@ -139,7 +139,12 @@ func codesRec(node *Node, codes MapCodes, code Code) {
 		code.Code |= 0b1
 		codesRec(node.right, codes, code)
 	} else {
-		codes[node.c] = code
+		r, utfSize := utf8.DecodeRuneInString(node.c)
+		if utfSize > 4 {
+			panic("wrong symbol")
+		}
+
+		codes[r] = code
 	}
 }
 
@@ -166,7 +171,7 @@ func TreeFromCodes(codes MapCodes) Node {
 			}
 		}
 
-		node.c = k
+		node.c = string(k)
 	}
 	return tree
 }
@@ -198,13 +203,8 @@ func CodesToBin(codes MapCodes) []byte {
 		panic("encoding wrong size")
 	}
 
-	for k, v := range codes {
+	for r, v := range codes {
 		runeBuf := make([]byte, 4)
-
-		r, utfSize := utf8.DecodeRuneInString(k)
-		if utfSize > 4 {
-			panic("wrong symbol")
-		}
 
 		encoded, err := binary.Encode(runeBuf, binary.LittleEndian, r)
 		if err != nil {
@@ -253,7 +253,7 @@ func BinToCodes(buf []byte, size int32) MapCodes {
 		if decoded != 8 {
 			panic("encoding wrong size")
 		}
-		result[string(r)] = payload
+		result[r] = payload
 	}
 
 	return result
@@ -274,10 +274,46 @@ func BinToData(binDataBuffer []byte) BinCode {
 	return result
 }
 
-func Encrypt(input string, haffmanTree Node) BinCode {
-	codes := Codes(haffmanTree)
+func Encrypt(input string, codes MapCodes) BinCode {
+	var newByte byte = 0
+	var index int32 = 0
+	result := BinCode{}
 
-	return EncryptedBinary(EncryptedString(input, codes))
+	for _, r := range input {
+		data := codes[r]
+
+		// 00000000        111             00111000
+		//   ^         counter = 3  numToShift = 8 - 2 - 3 = 3
+		// index = 2                                /     \
+		//                                     index      counter
+		numToShift := 8 - index - data.Counter
+		if numToShift > 0 {
+			newByte |= byte(data.Code) << numToShift
+			result.size += int64(data.Counter)
+			index += data.Counter
+		} else if numToShift == 0 {
+			newByte |= byte(data.Code) << numToShift
+			result.data = append(result.data, newByte)
+			index = 0
+			result.size += int64(data.Counter)
+			newByte = 0
+		} else if numToShift < 0 {
+			// 00000000       11111             00000111|11000000
+			//      ^      counter = 5  numToShift = 8 - 5 - 5 = -2
+			// index = 5                                /     \
+			//                                     index      counter
+			numToShift = -numToShift
+			newByte |= byte(data.Code) >> numToShift
+			result.data = append(result.data, newByte)
+			result.size += int64(data.Counter)
+			index = numToShift
+			newByte = 0 | byte(data.Code)<<(8 - numToShift)
+		} else {
+			panic("UNREACHABLE")
+		}
+	}
+
+	return result
 }
 
 // Very slow
@@ -285,14 +321,14 @@ func EncryptedString(input string, codes MapCodes) string {
 	var result string
 
 	for _, c := range input {
-		v := codes[string(c)]
+		v := codes[c]
 		result += fmt.Sprintf("%0*b", v.Counter, v.Code)
 	}
 
 	return result
 }
 
-func EncryptedBinary(input string) BinCode {
+func EncryptedStringToBinary(input string) BinCode {
 	result := BinCode{}
 	result.size = 0
 	var b byte = 0
@@ -363,7 +399,8 @@ func Decrypt(tree Node, encbin BinCode) string {
 func main() {
 	haffmanTree := haffmanTree(input_string)
 	codes := Codes(haffmanTree)
-	encbin := EncryptedBinary(EncryptedString(input_string, codes))
+	// encbin := EncryptedStringToBinary(EncryptedString(input_string, codes))
+	encbin := Encrypt(input_string, codes)
 
 	// Convert to binary data
 	// so we can save it to file

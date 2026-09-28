@@ -49,7 +49,7 @@ type BinCode struct {
 // While range on map in Go work randomly
 // the result on each function call
 // will be different
-func haffmanTree(str string) Node {
+func huffmanTree(str string) Node {
 	scores := map[rune]int{}
 	nodes := []Node{}
 
@@ -397,8 +397,8 @@ func Decrypt(tree Node, encbin BinCode) string {
 }
 
 func main() {
-	haffmanTree := haffmanTree(input_string)
-	codes := Codes(haffmanTree)
+	huffmanTree := huffmanTree(input_string)
+	codes := Codes(huffmanTree)
 	// encbin := EncryptedStringToBinary(EncryptedString(input_string, codes))
 	encbin := Encrypt(input_string, codes)
 

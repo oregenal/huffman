@@ -28,9 +28,10 @@ const input_string = "A poem is a piece of creative writing written in lines and
 // In x86_64 Node struct take 5 registers
 // So it can be provided/returned by value
 type Node struct {
-	c           string
-	score       int
-	left, right *Node
+	C     string `json:"c,omitempty"`
+	Score int    `json:"s,omitzero"`
+	Lo    *Node  `json:"lo,omitempty"`
+	Hi    *Node  `json:"hi,omitempty"`
 }
 
 // May be faster to use not String but Rune
@@ -58,15 +59,15 @@ func huffmanTree(str string) Node {
 	}
 
 	for k, v := range scores {
-		nodes = append(nodes, Node{c: string(k), score: v})
+		nodes = append(nodes, Node{C: string(k), Score: v})
 	}
 
 	smallest := func() Node {
 		value := math.MaxInt
 		index := 0
 		for i, n := range nodes {
-			if n.score < value {
-				value = n.score
+			if n.Score < value {
+				value = n.Score
 				index = i
 			}
 		}
@@ -85,10 +86,10 @@ func huffmanTree(str string) Node {
 		smallest1 := smallest()
 		smallest2 := smallest()
 		newNode := Node{
-			c:     smallest1.c + smallest2.c,
-			score: smallest1.score + smallest2.score,
-			left:  &smallest1,
-			right: &smallest2,
+			C:     smallest1.C + smallest2.C,
+			Score: smallest1.Score + smallest2.Score,
+			Lo:    &smallest1,
+			Hi:    &smallest2,
 		}
 		nodes = append(nodes, newNode)
 	}
@@ -109,9 +110,9 @@ func printTreeRec(tree *Node) string {
 	}
 
 	return fmt.Sprintf("{%s %d 0:%s 1:%s}",
-		tree.c, tree.score,
-		printTreeRec(tree.left),
-		printTreeRec(tree.right))
+		tree.C, tree.Score,
+		printTreeRec(tree.Lo),
+		printTreeRec(tree.Hi))
 }
 
 func PrintCodes(codes MapCodes) {
@@ -131,15 +132,15 @@ func Codes(tree Node) MapCodes {
 
 // Map pass thru by reference by default
 func codesRec(node *Node, codes MapCodes, code Code) {
-	if node.left != nil {
+	if node.Lo != nil {
 		code.Code <<= 1
 		code.Counter += 1
-		codesRec(node.left, codes, code)
+		codesRec(node.Lo, codes, code)
 
 		code.Code |= 0b1
-		codesRec(node.right, codes, code)
+		codesRec(node.Hi, codes, code)
 	} else {
-		r, utfSize := utf8.DecodeRuneInString(node.c)
+		r, utfSize := utf8.DecodeRuneInString(node.C)
 		if utfSize > 4 {
 			panic("wrong symbol")
 		}
@@ -156,22 +157,22 @@ func TreeFromCodes(codes MapCodes) Node {
 
 		for _, c := range strcode {
 			if c == '1' {
-				if node.right == nil {
+				if node.Hi == nil {
 					// This Node goes in heap??
-					node.right = &Node{}
+					node.Hi = &Node{}
 				}
-				node = node.right
+				node = node.Hi
 			} else if c == '0' {
-				if node.left == nil {
-					node.left = &Node{}
+				if node.Lo == nil {
+					node.Lo = &Node{}
 				}
-				node = node.left
+				node = node.Lo
 			} else {
 				log.Fatalf("UREACHABLE")
 			}
 		}
 
-		node.c = string(k)
+		node.C = string(k)
 	}
 	return tree
 }
@@ -307,7 +308,7 @@ func Encrypt(input string, codes MapCodes) BinCode {
 			result.data = append(result.data, newByte)
 			result.size += int64(data.Counter)
 			index = numToShift
-			newByte = 0 | byte(data.Code)<<(8 - numToShift)
+			newByte = 0 | byte(data.Code)<<(8-numToShift)
 		} else {
 			panic("UNREACHABLE")
 		}
@@ -371,8 +372,8 @@ func Decrypt(tree Node, encbin BinCode) string {
 		bit := 0
 
 		for bit < 8 {
-			if node.left == nil {
-				result += string(node.c)
+			if node.Lo == nil {
+				result += string(node.C)
 				node = tree
 			}
 
@@ -386,9 +387,9 @@ func Decrypt(tree Node, encbin BinCode) string {
 			counter -= 1
 
 			if k == 0 {
-				node = *node.left
+				node = *node.Lo
 			} else {
-				node = *node.right
+				node = *node.Hi
 			}
 		}
 	}

@@ -284,10 +284,10 @@ func Encrypt(input string, codes MapCodes) BinCode {
 	// index = 1
 	// Counter = 21
 	// Code >> 21 - 1*8 + 1 = 14
-	// -------------------------------- 
+	// --------------------------------
 	// Code cast to byte = 1100000(01100111)000111
 	// Code >> 21 - 2*8 + 1 = 6
-	// -------------------------------- 
+	// --------------------------------
 	// Code cast to byte = 110000001100111(00011100)
 	// Code >> 21 - 3*8 + 1 = -2 it's mean shift left
 	// Counter = 8 - 2 = 6
@@ -297,14 +297,14 @@ func Encrypt(input string, codes MapCodes) BinCode {
 		var iterator int32 = 1
 
 		for {
-			numToShift := data.Counter - iterator * 8 + index
+			numToShift := data.Counter - iterator*8 + index
 
 			if numToShift >= 0 {
 				newByte |= byte(data.Code >> numToShift)
 				result.data = append(result.data, newByte)
 				iterator += 1
 				newByte = 0
-			}  else if numToShift < 0 {
+			} else if numToShift < 0 {
 				numToShift = -numToShift
 				index = 8 - numToShift
 				newByte |= byte(data.Code << numToShift)

@@ -22,7 +22,7 @@ const (
 	codeSize   = 12 // Rune + 2 * int32
 )
 
-// BUG disappearing point at the end
+// BUG disappearing point at the end. Fixed in new Encrypt func.
 const input_string = "A poem is a piece of creative writing written in lines and stanzas that uses the sound, rhythm, and artistic meaning of words to share ideas and feelings."
 
 // In x86_64 Node struct take 5 registers
@@ -280,39 +280,44 @@ func Encrypt(input string, codes MapCodes) BinCode {
 	var index int32 = 0
 	result := BinCode{}
 
+	// Code cast to byte = (01100000)01100111000111
+	// index = 1
+	// Counter = 21
+	// Code >> 21 - 1*8 + 1 = 14
+	// -------------------------------- 
+	// Code cast to byte = 1100000(01100111)000111
+	// Code >> 21 - 2*8 + 1 = 6
+	// -------------------------------- 
+	// Code cast to byte = 110000001100111(00011100)
+	// Code >> 21 - 3*8 + 1 = -2 it's mean shift left
+	// Counter = 8 - 2 = 6
+
 	for _, r := range input {
 		data := codes[r]
+		var iterator int32 = 1
 
-		// 00000000        111             00111000
-		//   ^         counter = 3  numToShift = 8 - 2 - 3 = 3
-		// index = 2                                /     \
-		//                                     index      counter
-		numToShift := 8 - index - data.Counter
-		if numToShift > 0 {
-			newByte |= byte(data.Code) << numToShift
-			result.size += int64(data.Counter)
-			index += data.Counter
-		} else if numToShift == 0 {
-			newByte |= byte(data.Code) << numToShift
-			result.data = append(result.data, newByte)
-			index = 0
-			result.size += int64(data.Counter)
-			newByte = 0
-		} else if numToShift < 0 {
-			// 00000000       11111             00000111|11000000
-			//      ^      counter = 5  numToShift = 8 - 5 - 5 = -2
-			// index = 5                                /     \
-			//                                     index      counter
-			numToShift = -numToShift
-			newByte |= byte(data.Code) >> numToShift
-			result.data = append(result.data, newByte)
-			result.size += int64(data.Counter)
-			index = numToShift
-			newByte = 0 | byte(data.Code)<<(8-numToShift)
-		} else {
-			panic("UNREACHABLE")
+		for {
+			numToShift := data.Counter - iterator * 8 + index
+
+			if numToShift >= 0 {
+				newByte |= byte(data.Code) >> numToShift
+				result.data = append(result.data, newByte)
+				iterator += 1
+				newByte = 0
+				result.size += 8
+			}  else if numToShift < 0 {
+				numToShift = -numToShift
+				index = 8 - numToShift
+				newByte |= byte(data.Code) << numToShift
+				result.size += int64(index)
+				break
+			} else {
+				panic("UNREACHABLE")
+			}
 		}
 	}
+
+	result.data = append(result.data, newByte)
 
 	return result
 }
@@ -399,6 +404,7 @@ func Decrypt(tree Node, encbin BinCode) string {
 
 func main() {
 	huffmanTree := huffmanTree(input_string)
+
 	codes := Codes(huffmanTree)
 	// encbin := EncryptedStringToBinary(EncryptedString(input_string, codes))
 	encbin := Encrypt(input_string, codes)

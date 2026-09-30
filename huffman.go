@@ -1,7 +1,7 @@
-// Toy file compressor realized using Huffman algorithm
+// Toy file compressor realisation using Huffman algorithm
 //
 // Compressed file structure:
-// 		[header(".HUZ")][tableSize(int32)][Table][Data]
+// 		[magic(".HUZ")][tableSize(int32)][Table][Data]
 
 package main
 
@@ -15,14 +15,13 @@ import (
 )
 
 const (
-	dataFile   = "data.huz"
-	header     = ".HUZ"
-	headerSize = int32(len(header))
-	tableSize  = 4  // Int32
-	codeSize   = 12 // Rune + 2 * int32
+	dataFile  = "data.huz"
+	magic     = ".HUZ"
+	magicSize = int32(len(magic))
+	tableSize = 4  // Int32
+	codeSize  = 12 // Rune + 2 * int32
 )
 
-// BUG disappearing point at the end. Fixed in new Encrypt func.
 const input_string = "A poem is a piece of creative writing written in lines and stanzas that uses the sound, rhythm, and artistic meaning of words to share ideas and feelings."
 
 // In x86_64 Node struct take 5 registers
@@ -34,7 +33,6 @@ type Node struct {
 	Hi    *Node  `json:"hi,omitempty"`
 }
 
-// May be faster to use not String but Rune
 type MapCodes map[rune]Code
 
 type Code struct {
@@ -117,7 +115,7 @@ func printTreeRec(tree *Node) string {
 
 func PrintCodes(codes MapCodes) {
 	for k, v := range codes {
-		fmt.Printf("|%s: %0*b", k, v.Counter, v.Code)
+		fmt.Printf("|%s: %0*b", string(k), v.Counter, v.Code)
 	}
 	fmt.Println("|")
 }
@@ -156,18 +154,19 @@ func TreeFromCodes(codes MapCodes) Node {
 		node := &tree
 
 		for _, c := range strcode {
-			if c == '1' {
+			switch c {
+			case '1':
 				if node.Hi == nil {
-					// This Node goes in heap??
+					// This Node goes to heap??
 					node.Hi = &Node{}
 				}
 				node = node.Hi
-			} else if c == '0' {
+			case '0':
 				if node.Lo == nil {
 					node.Lo = &Node{}
 				}
 				node = node.Lo
-			} else {
+			default:
 				log.Fatalf("UREACHABLE")
 			}
 		}
@@ -297,14 +296,19 @@ func Encrypt(input string, codes MapCodes) BinCode {
 		var iterator int32 = 1
 
 		for {
-			numToShift := data.Counter - iterator*8 + index
+			numToShift := data.Counter + index - iterator*8
 
+			// When numToShift hit exactly 0
+			// on next iteration it's always hit -8.
 			if numToShift >= 0 {
 				newByte |= byte(data.Code >> numToShift)
 				result.data = append(result.data, newByte)
 				iterator += 1
 				newByte = 0
 			} else if numToShift < 0 {
+				// When numToShift hit exactly -8 data doesn't changing.
+				// Index sets to 0 and loop just break.
+				// So we don't need to do amything special.
 				numToShift = -numToShift
 				index = 8 - numToShift
 				newByte |= byte(data.Code << numToShift)
@@ -322,7 +326,7 @@ func Encrypt(input string, codes MapCodes) BinCode {
 	return result
 }
 
-// Very slow
+// Extremely slow DO NOT USE
 func EncryptedString(input string, codes MapCodes) string {
 	var result string
 
@@ -340,12 +344,13 @@ func EncryptedStringToBinary(input string) BinCode {
 	var b byte = 0
 
 	for _, c := range input {
-		if c == '1' {
+		switch c {
+		case '1':
 			b |= 1
 			result.size += 1
-		} else if c == '0' {
+		case '0':
 			result.size += 1
-		} else {
+		default:
 			panic("unsupported symbol")
 		}
 
@@ -367,7 +372,6 @@ func EncryptedStringToBinary(input string) BinCode {
 	return result
 }
 
-// Vary slow
 func Decrypt(tree Node, encbin BinCode) string {
 	result := []byte{}
 	node := tree
@@ -408,10 +412,8 @@ func Decrypt(tree Node, encbin BinCode) string {
 }
 
 func main() {
-	huffmanTree := huffmanTree(input_string)
-
-	codes := Codes(huffmanTree)
-	// encbin := EncryptedStringToBinary(EncryptedString(input_string, codes))
+	binTree := huffmanTree(input_string)
+	codes := Codes(binTree)
 	encbin := Encrypt(input_string, codes)
 
 	// Convert to binary data
@@ -419,33 +421,44 @@ func main() {
 	bincodes := CodesToBin(codes)
 	bindata := DataToBin(encbin)
 	bin := []byte{}
-	bin = append(bin, []byte(header)...)
+	bin = append(bin, []byte(magic)...)
 	bin = append(bin, bincodes...)
 	bin = append(bin, bindata...)
 
 	// File manipulations
-	os.WriteFile(dataFile, bin, 0644)
+	err := os.WriteFile(dataFile, bin, 0644)
+	if err != nil {
+		log.Fatalf("write file fail %v", err)
+	}
 
 	fromFile, err := os.ReadFile(dataFile)
 	if err != nil {
 		log.Fatalf("read file fail %v", err)
 	}
 
-	// Decode BinCode from binary format
-	if string(fromFile[:headerSize]) != header {
+	// Check if it our file
+	if string(fromFile[:magicSize]) != magic {
 		panic("vrong file type")
 	}
 
-	var binCodesSize int32
-	binary.Decode(
-		fromFile[headerSize:headerSize+tableSize],
+	// Decode BinCode from binary format
+	var binCodesCount int32
+	decoded, err := binary.Decode(
+		fromFile[magicSize:magicSize+tableSize],
 		binary.LittleEndian,
-		&binCodesSize)
-	binCodeBufferEnd := codeSize*binCodesSize + headerSize + tableSize
-	binCodesBuffer := fromFile[headerSize+tableSize : binCodeBufferEnd]
+		&binCodesCount)
+	if err != nil {
+		log.Fatalf("decode fail %v", err)
+	}
+	if decoded != 4 {
+		panic("decoding wrong size")
+	}
+
+	binCodeBufferEnd := codeSize*binCodesCount + magicSize + tableSize
+	binCodesBuffer := fromFile[magicSize+tableSize : binCodeBufferEnd]
 	binDataBuffer := fromFile[binCodeBufferEnd:]
 
-	newCodes := BinToCodes(binCodesBuffer, binCodesSize)
+	newCodes := BinToCodes(binCodesBuffer, binCodesCount)
 	newData := BinToData(binDataBuffer)
 	newTree := TreeFromCodes(newCodes)
 

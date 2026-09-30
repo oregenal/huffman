@@ -300,21 +300,21 @@ func Encrypt(input string, codes MapCodes) BinCode {
 			numToShift := data.Counter - iterator * 8 + index
 
 			if numToShift >= 0 {
-				newByte |= byte(data.Code) >> numToShift
+				newByte |= byte(data.Code >> numToShift)
 				result.data = append(result.data, newByte)
 				iterator += 1
 				newByte = 0
-				result.size += 8
 			}  else if numToShift < 0 {
 				numToShift = -numToShift
 				index = 8 - numToShift
-				newByte |= byte(data.Code) << numToShift
-				result.size += int64(index)
+				newByte |= byte(data.Code << numToShift)
 				break
 			} else {
 				panic("UNREACHABLE")
 			}
 		}
+
+		result.size += int64(data.Counter)
 	}
 
 	result.data = append(result.data, newByte)

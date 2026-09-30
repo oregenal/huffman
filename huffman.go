@@ -369,7 +369,7 @@ func EncryptedStringToBinary(input string) BinCode {
 
 // Vary slow
 func Decrypt(tree Node, encbin BinCode) string {
-	result := ""
+	result := []byte{}
 	node := tree
 	counter := encbin.size
 
@@ -378,7 +378,12 @@ func Decrypt(tree Node, encbin BinCode) string {
 
 		for bit < 8 {
 			if node.Lo == nil {
-				result += string(node.C)
+				r, utfSize := utf8.DecodeRuneInString(node.C)
+				if utfSize > 4 {
+					panic("wrong symbol")
+				}
+
+				result = utf8.AppendRune(result, r)
 				node = tree
 			}
 
@@ -399,7 +404,7 @@ func Decrypt(tree Node, encbin BinCode) string {
 		}
 	}
 
-	return result
+	return string(result)
 }
 
 func main() {

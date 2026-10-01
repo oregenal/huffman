@@ -3,6 +3,29 @@
 // Compressed file structure:
 // 		[magic(".HUZ")][tableSize(int32)][Table][Data]
 
+
+
+
+// Copyright (c) 2026 Andrey Gud <nosacred@gmail.com>
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to
+// deal in the Software without restriction, including without limitation the
+// rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+// sell copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+// IN THE SOFTWARE.
+
 package main
 
 import (
@@ -14,12 +37,22 @@ import (
 	"unicode/utf8"
 )
 
+const usageMessage =
+`Usage: %v <file.huz|file.txt>
+    file.huz    - compressed file
+    file.txt    - text file
+
+Utility automatically detect wich file is this
+and perform appropriate action.
+`
+
 const (
 	magic     = ".HUZ"
 	magicSize = int32(len(magic))
 	tableSize = 4  // Int32
 	codeSize  = 12 // Rune + 2 * int32
 )
+
 
 // In x86_64 Node struct take 5 registers
 // So it can be provided/returned by value
@@ -137,7 +170,7 @@ func codesRec(node *Node, codes MapCodes, code Code) {
 	} else {
 		r, utfSize := utf8.DecodeRuneInString(node.C)
 		if utfSize > 4 {
-			panic("wrong symbol")
+			log.Fatalf("wrong symbol")
 		}
 
 		codes[r] = code
@@ -181,7 +214,7 @@ func DataToBin(encbin BinCode) []byte {
 		log.Fatalf("encode fail %v", err)
 	}
 	if encoded != 8 {
-		panic("encoding wrong size")
+		log.Fatalf("encoding wrong size")
 	}
 
 	data = append(data, encbin.data...)
@@ -197,7 +230,7 @@ func CodesToBin(codes MapCodes) []byte {
 		log.Fatalf("encode fail %v", err)
 	}
 	if encoded != tableSize {
-		panic("encoding wrong size")
+		log.Fatalf("encoding wrong size")
 	}
 
 	for r, v := range codes {
@@ -208,7 +241,7 @@ func CodesToBin(codes MapCodes) []byte {
 			log.Fatalf("encode fail %v", err)
 		}
 		if encoded != 4 {
-			panic("encoding wrong size")
+			log.Fatalf("encoding wrong size")
 		}
 		result = append(result, runeBuf...)
 
@@ -218,7 +251,7 @@ func CodesToBin(codes MapCodes) []byte {
 			log.Fatalf("encode fail %v", err)
 		}
 		if encoded != 8 {
-			panic("encoding wrong size")
+			log.Fatalf("encoding wrong size")
 		}
 		result = append(result, scoreBuf...)
 	}
@@ -237,7 +270,7 @@ func BinToCodes(buf []byte, size int32) MapCodes {
 			log.Fatalf("decode fail %v", err)
 		}
 		if decoded != 4 {
-			panic("encoding wrong size")
+			log.Fatalf("encoding wrong size")
 		}
 
 		payload := Code{}
@@ -248,7 +281,7 @@ func BinToCodes(buf []byte, size int32) MapCodes {
 			log.Fatalf("decode fail %v", err)
 		}
 		if decoded != 8 {
-			panic("encoding wrong size")
+			log.Fatalf("encoding wrong size")
 		}
 		result[r] = payload
 	}
@@ -311,7 +344,7 @@ func Encrypt(input string, codes MapCodes) BinCode {
 				newByte |= byte(data.Code << numToShift)
 				break
 			} else {
-				panic("UNREACHABLE")
+				log.Fatalf("UNREACHABLE")
 			}
 		}
 
@@ -348,7 +381,7 @@ func EncryptedStringToBinary(input string) BinCode {
 		case '0':
 			result.size += 1
 		default:
-			panic("unsupported symbol")
+			log.Fatalf("unsupported symbol")
 		}
 
 		if result.size%8 != 0 {
@@ -357,7 +390,7 @@ func EncryptedStringToBinary(input string) BinCode {
 			result.data = append(result.data, b)
 			b = 0
 		} else {
-			panic("UNREACHABLE")
+			log.Fatalf("UNREACHABLE")
 		}
 	}
 
@@ -369,7 +402,7 @@ func EncryptedStringToBinary(input string) BinCode {
 	return result
 }
 
-func Decrypt(tree Node, encbin BinCode) string {
+func Decrypt(tree Node, encbin BinCode) []byte {
 	result := []byte{}
 	node := tree
 	counter := encbin.size
@@ -381,7 +414,7 @@ func Decrypt(tree Node, encbin BinCode) string {
 			if node.Lo == nil {
 				r, utfSize := utf8.DecodeRuneInString(node.C)
 				if utfSize > 4 {
-					panic("wrong symbol")
+					log.Fatalf("wrong symbol")
 				}
 
 				result = utf8.AppendRune(result, r)
@@ -405,12 +438,12 @@ func Decrypt(tree Node, encbin BinCode) string {
 		}
 	}
 
-	return string(result)
+	return result
 }
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Printf("Usage: %v <file.huz|file.txt>\n", os.Args[0])
+		fmt.Printf(usageMessage, os.Args[0])
 		os.Exit(0)
 	}
 
@@ -452,7 +485,7 @@ func main() {
 			log.Fatalf("decode fail %v", err)
 		}
 		if decoded != 4 {
-			panic("decoding wrong size")
+			log.Fatalf("decoding wrong size")
 		}
 
 		binCodeBufferEnd := codeSize*binCodesCount + magicSize + tableSize
@@ -466,7 +499,7 @@ func main() {
 		result := Decrypt(newTree, newData)
 
 		outputFile := inputFile + ".txt"
-		err = os.WriteFile(outputFile, []byte(result), 0644)
+		err = os.WriteFile(outputFile, result, 0644)
 		if err != nil {
 			log.Fatalf("write file fail %v", err)
 		}

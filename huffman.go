@@ -15,14 +15,11 @@ import (
 )
 
 const (
-	dataFile  = "data.huz"
 	magic     = ".HUZ"
 	magicSize = int32(len(magic))
 	tableSize = 4  // Int32
 	codeSize  = 12 // Rune + 2 * int32
 )
-
-const input_string = "A poem is a piece of creative writing written in lines and stanzas that uses the sound, rhythm, and artistic meaning of words to share ideas and feelings."
 
 // In x86_64 Node struct take 5 registers
 // So it can be provided/returned by value
@@ -412,56 +409,66 @@ func Decrypt(tree Node, encbin BinCode) string {
 }
 
 func main() {
-	binTree := huffmanTree(input_string)
-	codes := Codes(binTree)
-	encbin := Encrypt(input_string, codes)
-
-	// Convert to binary data
-	// so we can save it to file
-	bincodes := CodesToBin(codes)
-	bindata := DataToBin(encbin)
-	bin := []byte{}
-	bin = append(bin, []byte(magic)...)
-	bin = append(bin, bincodes...)
-	bin = append(bin, bindata...)
-
-	// File manipulations
-	err := os.WriteFile(dataFile, bin, 0644)
-	if err != nil {
-		log.Fatalf("write file fail %v", err)
+	if len(os.Args) < 2 {
+		fmt.Printf("Usage: %v <file.huz|file.txt>\n", os.Args[0])
+		os.Exit(0)
 	}
 
-	fromFile, err := os.ReadFile(dataFile)
+	inputFile := os.Args[1]
+	fromFile, err := os.ReadFile(inputFile)
 	if err != nil {
 		log.Fatalf("read file fail %v", err)
 	}
 
-	// Check if it our file
+	// Check if it not huz file
 	if string(fromFile[:magicSize]) != magic {
-		panic("vrong file type")
+		text := string(fromFile)
+		binTree := huffmanTree(text)
+		codes := Codes(binTree)
+		encbin := Encrypt(text, codes)
+
+		// Convert to binary data
+		// so we can save it to file
+		bincodes := CodesToBin(codes)
+		bindata := DataToBin(encbin)
+		bin := []byte{}
+		bin = append(bin, []byte(magic)...)
+		bin = append(bin, bincodes...)
+		bin = append(bin, bindata...)
+
+		outputFile := inputFile + ".huz"
+		err := os.WriteFile(outputFile, bin, 0644)
+		if err != nil {
+			log.Fatalf("write file fail %v", err)
+		}
+	} else {
+		// Decode BinCode from binary format
+		var binCodesCount int32
+		decoded, err := binary.Decode(
+			fromFile[magicSize:magicSize+tableSize],
+			binary.LittleEndian,
+			&binCodesCount)
+		if err != nil {
+			log.Fatalf("decode fail %v", err)
+		}
+		if decoded != 4 {
+			panic("decoding wrong size")
+		}
+
+		binCodeBufferEnd := codeSize*binCodesCount + magicSize + tableSize
+		binCodesBuffer := fromFile[magicSize+tableSize : binCodeBufferEnd]
+		binDataBuffer := fromFile[binCodeBufferEnd:]
+
+		newCodes := BinToCodes(binCodesBuffer, binCodesCount)
+		newData := BinToData(binDataBuffer)
+		newTree := TreeFromCodes(newCodes)
+
+		result := Decrypt(newTree, newData)
+
+		outputFile := inputFile + ".txt"
+		err = os.WriteFile(outputFile, []byte(result), 0644)
+		if err != nil {
+			log.Fatalf("write file fail %v", err)
+		}
 	}
-
-	// Decode BinCode from binary format
-	var binCodesCount int32
-	decoded, err := binary.Decode(
-		fromFile[magicSize:magicSize+tableSize],
-		binary.LittleEndian,
-		&binCodesCount)
-	if err != nil {
-		log.Fatalf("decode fail %v", err)
-	}
-	if decoded != 4 {
-		panic("decoding wrong size")
-	}
-
-	binCodeBufferEnd := codeSize*binCodesCount + magicSize + tableSize
-	binCodesBuffer := fromFile[magicSize+tableSize : binCodeBufferEnd]
-	binDataBuffer := fromFile[binCodeBufferEnd:]
-
-	newCodes := BinToCodes(binCodesBuffer, binCodesCount)
-	newData := BinToData(binDataBuffer)
-	newTree := TreeFromCodes(newCodes)
-
-	result := Decrypt(newTree, newData)
-	fmt.Println(result)
 }
